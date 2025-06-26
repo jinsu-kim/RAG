@@ -7,6 +7,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.prompts import PromptTemplate   # prompt formatter
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from question_type import question_type_llm
 
 load_dotenv()
 logging.langsmith("RAG_test")
@@ -16,7 +17,13 @@ loader = PyMuPDFLoader("data/SPRI_AI_Brief_2023년12월호_F.pdf")
 docs = loader.load()
 print(f"문서의 페이지수: {len(docs)}")
 
-# Split Document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
+# LLM
+llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
+
+# Split Document
+question = "삼성전자가 자체 개발한 AI 의 이름은?"
+q_type = question_type_llm(llm_model=llm, question=question)
+
 text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
 split_documents = text_splitter.split_documents(docs)
 print(f"분할된 청크의수: {len(split_documents)}")
@@ -45,9 +52,6 @@ Answer in Korean.
 #Answer:"""
 )
 
-# LLM
-llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
-
 # Define Chain
 chain = (
     {"context": retriever, "question": RunnablePassthrough()}
@@ -57,6 +61,5 @@ chain = (
 )
 
 # Run Chain
-question = "삼성전자가 자체 개발한 AI 의 이름은?"
 response = chain.invoke(question)
 print(response)
