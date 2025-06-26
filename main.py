@@ -24,9 +24,13 @@ llm = ChatOpenAI(model_name="gpt-4o", temperature=0)
 question = "삼성전자가 자체 개발한 AI 의 이름은?"
 q_type = question_type_llm(llm_model=llm, question=question)
 
-text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
-split_documents = text_splitter.split_documents(docs)
-print(f"분할된 청크의수: {len(split_documents)}")
+if q_type == 'fact':
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=400, chunk_overlap=0)
+    split_documents = text_splitter.split_documents(docs)
+
+else: # reasoning
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=50)
+    split_documents = text_splitter.split_documents(docs)
 
 # Embedding
 embeddings = OpenAIEmbeddings()

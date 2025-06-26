@@ -29,6 +29,6 @@ def question_type_llm(**kwargs):
                 | StrOutputParser()
         )
 
-        response = chain.invoke(question)
+        q_type = chain.invoke(question)
 
-    return response
+    return q_type
