@@ -47,10 +47,51 @@ def preprocess_pages(pages: list[dict]) -> list[dict]:
     return processed
 
 
+def chunk_text(text:str, chunk_size:int, overlap:int) -> list[str]:
+
+    if chunk_size <= overlap or chunk_size < 0 or overlap < 0:
+        raise ValueError("Invalid parameters")
+
+    text = text.strip()
+
+    if not text:
+        return []
+
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+        chunk = text[start:end].strip()
+
+        if chunk:
+            chunks.append(chunk)
+
+        start = end - overlap
+
+    return chunks
+
+def chunk_pages(args, pages: list[dict]) ->  list[dict]:
+
+    all_chunks = []
+
+    for page in pages:
+        source   = page["source"]
+        page_num = page["page"]
+        text     = page.get("text", "")
+
+        page_chunks = chunk_text(text=text, chunk_size=args.chunk_size, overlap=args.overlap)
+
+    return all_chunks
+
 def run_index(args, target_files):
 
+    # preprocessing pages
     pages           = load_all_pdfs(data_dir="./data/raw", target_files=target_files)
     processed_pages = preprocess_pages(pages)
+
+    # chunking pages
+    chunked_pages   = chunk_pages(processed_pages)
 
 def ensure_index(args):
 
@@ -76,6 +117,7 @@ def main():
     parser.add_argument("--model",      type=str, default="kure-v1", choices=["kure-v1", "bge-m3", "openai"])
     parser.add_argument("--top-k",      type=int, default=5)
     parser.add_argument("--chunk_size", type=int, default=500)
+    parser.add_argument("--overlap",    type=int, default=50)
 
     args = parser.parse_args()
 
