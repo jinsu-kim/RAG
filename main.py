@@ -1,24 +1,37 @@
 import argparse
 import json
 import os
+import chromadb
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+from pdf_loader import load_all_pdfs
 
+load_dotenv()
+CHROMADB_PATH = "./chroma_db"
 
 
 def get_chunk_count():
 
 
-def get_indexed_sources():
+def get_indexed_sources(collection_name:str) -> set[str]:
 
+    client     = chromadb.PersistentClient(path=CHROMADB_PATH)
+    collection = client.get_or_create_collection(name=collection_name)
+    result     = collection.get(include=["metadatas"])
 
-def run_index():
+    sources = set()
+    for metadata in result["metadatas"]:
+        if metadata and "source" in metadata:
+            sources.add(metadata["source"])
 
+    return sources
 
 def run_ask():
 
+
+def run_index(args, target):
+    pages = load_all_pdfs(data_dir="./data/raw", target_files=target_files)
 
 def ensure_index(args):
 
@@ -31,9 +44,11 @@ def ensure_index(args):
         indexed_sources = get_indexed_sources()
         actual_files = {f.name for f in Path("./data/raw").glob("*.pdf")}
         new_files = actual_files - indexed_sources
+
         if new_files:
             print(f"새 문서 감지: {new_files}")
             run_index(args, target_files=new_files)
+
 
 
 def main():
@@ -49,5 +64,7 @@ def main():
 
     # 질문 실행
     run_ask(args)
+
+
 if __name__ == "__main__":
     main()
