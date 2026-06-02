@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import re
 import chromadb
 from pathlib import Path
 from dotenv import load_dotenv
@@ -30,13 +31,31 @@ def get_indexed_sources(collection_name:str) -> set[str]:
 def run_ask():
 
 
-def run_index(args, target):
-    pages = load_all_pdfs(data_dir="./data/raw", target_files=target_files)
+def preprocess_pages(pages: list[dict]) -> list[dict]:
+
+    processed = []
+    for page in pages:
+        text = page["text"]
+
+        text = re.sub(r"\s+", " ", text)
+        text = text.strip()
+
+        page["text"] = text
+
+        processed.append(page)
+
+    return processed
+
+
+def run_index(args, target_files):
+
+    pages           = load_all_pdfs(data_dir="./data/raw", target_files=target_files)
+    processed_pages = preprocess_pages(pages)
 
 def ensure_index(args):
 
     if get_chunk_count() == 0:
-        print("ChromaDB가 비어있습니다.")
+        print("Empty ChromaDB")
         run_index(args)
         return None
 
@@ -46,7 +65,7 @@ def ensure_index(args):
         new_files = actual_files - indexed_sources
 
         if new_files:
-            print(f"새 문서 감지: {new_files}")
+            print(f"New Docs: {new_files}")
             run_index(args, target_files=new_files)
 
 
