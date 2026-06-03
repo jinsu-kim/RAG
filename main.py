@@ -20,10 +20,15 @@ MODEL_MAPPING = {"bge-m3": "BAAI/bge-m3", "kure-v1": "nlpai-lab/KURE-v1", "opena
 def get_chunk_count():
 
 
+def get_collection(collection_name:str):
+    client = chromadb.PersistentClient(path=CHROMADB_PATH)
+    collection = client.get_or_create_collection(name=collection_name)
+
+    return collection
+
 def get_indexed_sources(collection_name:str) -> set[str]:
 
-    client     = chromadb.PersistentClient(path=CHROMADB_PATH)
-    collection = client.get_or_create_collection(name=collection_name)
+    collection = get_collection(collection_name)
     result     = collection.get(include=["metadatas"])
 
     sources = set()
@@ -96,6 +101,23 @@ def chunk_pages(args, pages: list[dict]) ->  list[dict]:
 
     return all_chunks
 
+def save_chunks(chunks: list[dict], embeddings: list[list[float]], collection_name: str):
+
+    collection = get_collection(collection_name)
+
+    ids   = []
+    docs  = []
+    metas = []
+
+    for chunk in chunks:
+        ids.append(chunk["chunk_id"])
+        docs.append(chunk["chunk_text"])
+        metas.append(
+                    {"source": chunk["source"], "page": chunk["page"]}
+                    )
+
+        collection.add(ids=ids, documents=docs, embeddings=embeddings, metadatas=metas)
+
 
 def load_embedder(model_name:str):
 
@@ -115,17 +137,17 @@ def embed(texts: list[str], model_name: str, embedder, batch_size: int = 32) -> 
         return []
 
     if model_name == "openai":
-        res       = embedder.embeddings.create(model=MODEL_MAPPING["openai"], input=texts)
-        embedded  = [item.embedding for item in res.data]
-        return embedded
+        res        = embedder.embeddings.create(model=MODEL_MAPPING["openai"], input=texts)
+        embeddings = [item.embedding for item in res.data]
+        return embeddings
 
     else:   # bge-m3, kure-v1
-        embedded  = embedder.encode(texts, normalize_embeddings=True, show_progress_bar=True,
+        embeddings = embedder.encode(texts, normalize_embeddings=True, show_progress_bar=True,
                                     batch_size=batch_size)
 
-        if isinstance(embedded, np.ndarray):
-            embedded = embedded.tolist()
-        return embedded
+        if isinstance(embeddings, np.ndarray):
+            embeddings = embeddings.tolist()
+        return embeddings
 
 
 def run_index(args, target_files):
@@ -141,7 +163,10 @@ def run_index(args, target_files):
     embedder        = load_embedder(args.model)
 
     text_list       = [chunk["chunk_text"] for chunk in chunked_pages]
-    embedding       = embed(texts=text_list, model_name=args.model, embedder=embedder)
+    embeddings      = embed(texts=text_list, model_name=args.model, embedder=embedder)
+
+    collection_name = f"spri_{args.model.replace('-', '_')}"
+    save_chunks(chunks=chunked_pages, embeddings=embeddings, collection_name=collection_name)
 
 
 def ensure_index(args):
