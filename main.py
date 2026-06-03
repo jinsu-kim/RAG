@@ -150,7 +150,7 @@ def embed(texts: list[str], model_name: str, embedder, batch_size: int = 32) -> 
         return embeddings
 
 
-def run_index(args, target_files):
+def build_index(args, target_files):
 
     # preprocessing pages
     pages           = load_all_pdfs(data_dir="./data/raw", target_files=target_files)
@@ -173,7 +173,7 @@ def ensure_index(args):
 
     if get_chunk_count() == 0:
         print("Empty ChromaDB")
-        run_index(args)
+        build_index(args)
         return None
 
     else:
@@ -183,7 +183,7 @@ def ensure_index(args):
 
         if new_files:
             print(f"New Docs: {new_files}")
-            run_index(args, target_files=new_files)
+            build_index(args, target_files=new_files)
 
 
 
