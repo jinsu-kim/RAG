@@ -3,13 +3,18 @@ import json
 import os
 import re
 import chromadb
+import numpy as np
+
 from pathlib import Path
 from dotenv import load_dotenv
+from openai import OpenAI
+from sentence_transformers import SentenceTransformer
 
 from pdf_loader import load_all_pdfs
 
 load_dotenv()
 CHROMADB_PATH = "./chroma_db"
+MODEL_MAPPING = {"bge-m3": "BAAI/bge-m3", "kure-v1": "nlpai-lab/KURE-v1", "openai": "text-embedding-3-small"}
 
 
 def get_chunk_count():
@@ -91,6 +96,38 @@ def chunk_pages(args, pages: list[dict]) ->  list[dict]:
 
     return all_chunks
 
+
+def load_embedder(model_name:str):
+
+    if model_name not in MODEL_MAPPING:
+        raise ValueError("Invalid model name")
+
+    elif model_name == "openai":
+        return OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    else:
+        SentenceTransformer(MODEL_MAPPING[model_name])
+
+
+def embed(texts: list[str], model_name: str, embedder, batch_size: int = 32) -> list[list[float]]:
+
+    if not texts:
+        return []
+
+    if model_name == "openai":
+        res       = embedder.embeddings.create(model=MODEL_MAPPING["openai"], input=texts)
+        embedded  = [item.embedding for item in res.data]
+        return embedded
+
+    else:   # bge-m3, kure-v1
+        embedded  = embedder.encode(texts, normalize_embeddings=True, show_progress_bar=True,
+                                    batch_size=batch_size)
+
+        if isinstance(embedded, np.ndarray):
+            embedded = embedded.tolist()
+        return embedded
+
+
 def run_index(args, target_files):
 
     # preprocessing pages
@@ -99,6 +136,13 @@ def run_index(args, target_files):
 
     # chunking pages
     chunked_pages   = chunk_pages(processed_pages)
+
+    # embedding
+    embedder        = load_embedder(args.model)
+
+    text_list       = [chunk["chunk_text"] for chunk in chunked_pages]
+    embedding       = embed(texts=text_list, model_name=args.model, embedder=embedder)
+
 
 def ensure_index(args):
 
@@ -130,7 +174,6 @@ def main():
 
     ensure_index(args)
 
-    # 질문 실행
     run_ask(args)
 
 
