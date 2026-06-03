@@ -57,7 +57,7 @@ def chunk_text(text:str, chunk_size:int, overlap:int) -> list[str]:
     if not text:
         return []
 
-    chunks = []
+    chunk_list = []
     start = 0
 
     while start < len(text):
@@ -65,11 +65,11 @@ def chunk_text(text:str, chunk_size:int, overlap:int) -> list[str]:
         chunk = text[start:end].strip()
 
         if chunk:
-            chunks.append(chunk)
+            chunk_list.append(chunk)
 
         start = end - overlap
 
-    return chunks
+    return chunk_list
 
 def chunk_pages(args, pages: list[dict]) ->  list[dict]:
 
@@ -81,6 +81,13 @@ def chunk_pages(args, pages: list[dict]) ->  list[dict]:
         text     = page.get("text", "")
 
         page_chunks = chunk_text(text=text, chunk_size=args.chunk_size, overlap=args.overlap)
+
+        for idx, texts in enumerate(page_chunks):
+
+            chunk_id = f"{source}_p{page_num}_c{idx}"
+            all_chunks.append(
+                {"chunk_id":chunk_id, "source":source, "page":page_num, "chunk_text":texts}
+            )
 
     return all_chunks
 
